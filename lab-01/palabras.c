@@ -3,17 +3,16 @@
 
 int main(int argc, char *argv[])
 {
-    // Agregar código aquí.
 	char entrada;
-	while(1){ 
-		entrada=getchar();
+	while(1){
+		entrada=getchar(); 
 		if (entrada==' '){
 			printf("\n");
 		}
-		else{
+		else
+		{
 			printf("%c", entrada);
 		}
-
 	}
     // Termina la ejecución del programa.
     exit(EXIT_SUCCESS);
