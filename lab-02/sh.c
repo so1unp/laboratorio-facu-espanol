@@ -73,6 +73,7 @@ void runcmd(struct cmd *cmd)
         case REDIR:
             rcmd = (struct redircmd *)cmd;
             int fd;
+            
             if (rcmd->type == '<'){
                 fd=open(rcmd->file, O_RDONLY);
             }else{
