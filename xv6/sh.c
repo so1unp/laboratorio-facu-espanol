@@ -71,15 +71,17 @@ runcmd(struct cmd *cmd)
     panic("runcmd");
 
   case EXEC:
-    ecmd = (struct execcmd*)cmd;
-    if(ecmd->argv[0] == 0)
+    ecmd = (struct execcmd *) cmd;
+    if (ecmd->argv[0] == 0)
       exit();
-    printf(2, "exec not implemented\n");
+    exec(ecmd->argv[0], ecmd->argv);
+    exit(); 
     break;
 
   case REDIR:
-    printf(2, "redir not implemented\n");
     rcmd = (struct redircmd*)cmd;
+    close(rcmd->fd);
+    open(rcmd->file, rcmd->mode);
     runcmd(rcmd->cmd);
     break;
 
