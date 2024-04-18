@@ -6,7 +6,7 @@
 
 void sighandler(int signum)
 {
-    printf("Senial: %d, Descripcion: %s \n", signum, strsignal(signum));
+    printf("Señal: %d, Descripcion: %s \n", signum, strsignal(signum));
 }
 
 int main(void)
