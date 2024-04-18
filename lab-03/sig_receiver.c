@@ -6,7 +6,11 @@
 
 void sighandler(int signum)
 {
+<<<<<<< HEAD
     printf("Señal: %d, Descripcion: %s \n", signum, strsignal(signum));
+=======
+    printf("Senial: %d, Descripcion: %s \n", signum, strsignal(signum));
+>>>>>>> a574e75885be2b172c320eea9925a8755c613775
 }
 
 int main(void)
