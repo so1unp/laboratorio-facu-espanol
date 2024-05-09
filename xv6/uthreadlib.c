@@ -19,6 +19,7 @@ struct thread
 typedef struct thread thread_t, *thread_p;
 
 static thread_t all_thread[MAX_THREAD];
+static int ultimo_visitado = 0; //variable global que sirve para saber el indice del ultimo hilo ejecutado
 
 thread_p current_thread;
 thread_p next_thread;
@@ -40,20 +41,22 @@ void thread_init(void)
 void thread_schedule(void)
 {
   thread_p t;
-  static int last_index = 0; // Variable estática para rastrear la última posición visitada
-
+  int i, indice;
   /* Find another runnable thread. */
   next_thread = 0;
-  for (t = all_thread; t < all_thread + MAX_THREAD; t++)
+
+  for (i = 1; i < MAX_THREAD; i++)
   {
+    indice = (ultimo_visitado + i) % MAX_THREAD;
+    t = &all_thread[indice];
     if (t->state == RUNNABLE && t != current_thread)
     {
       next_thread = t;
-      last_index = (t - all_thread) % MAX_THREAD; // Actualiza la última posición visitada
+      ultimo_visitado = indice; // Actualiza el indice del ultimo hilo que se ejecutó
       break;
     }
   }
-
+  
 
   if (t >= all_thread + MAX_THREAD && current_thread->state == RUNNABLE)
   {
@@ -63,8 +66,7 @@ void thread_schedule(void)
 
   if (next_thread == 0)
   {
-    printf(2, "thread_schedule: no runnable threads\n");
-    exit(); //aca hay que cambiar algo para que vuelva al main
+    next_thread = &all_thread[0]; //establece como siguiente hilo el main
   }
 
   if (current_thread != next_thread)

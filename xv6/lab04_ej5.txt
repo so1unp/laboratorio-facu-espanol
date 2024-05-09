@@ -1,0 +1,3 @@
+2) Basta con ejecutar popa ya que esta instrucción restaura todo el contexto del thread que se planificó (el almacenado en next_thread), por ende la cpu empieza a ejecutarlo.
+3) Se implementa una política de planificación colaborativa ya que es cada hilo el que decide dejar de ejecutarse para darle espacio a otro. Además, es FIFO ya que el primer hilo en llegar es el primero en ejecutarse.
+4) Si se ejecutan más de dos hilos, serán los primeros dos los que se ejecuten hasta que terminen ya que el planificador siempre empieza a recorrer el array de hilos desde el principio, por ende encontrará a los primeros dos hasta que estos lugares se liberen. 
