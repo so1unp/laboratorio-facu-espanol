@@ -4,7 +4,7 @@
 #define PAGINA 4
 
 #define VIRTUAL (64 / PAGINA) // 64/4
-#define FISICA (16 / PAGINA)
+#define FISICA (32 / PAGINA)
 #define SWAP (64 / PAGINA)
 #define MAXIMO_PROCESOS 100
 
@@ -22,7 +22,7 @@ struct pagina_virtual
     int ubicacion_swap;
     int ubicacion;
     char ram;
-    //int lru_index se usa para ver cual es el menos recientemente usado. se aumenta y se le asigna sucesivamente a lo que se carga
+    int lru_index; // se usa para ver cual es el menos recientemente usado. se aumenta y se le asigna sucesivamente a lo que se carga
 };
 
 typedef struct pagina_virtual pagina_t;
@@ -46,22 +46,36 @@ frame_t fisica[FISICA];
 frame_t swap[SWAP];
 proceso_t procesos[MAXIMO_PROCESOS];
 int fifo_index = 0;
-int swap_index = 0;
+int swap_index = -1;
+int lru_index = 0;
+int i, j;
 
-// falta eliminar de la swap si vuelve a la ram
 void fifo(int proceso_id, int pagina)
 {
     if (procesos[proceso_id].pid == -1)
     {
         procesos[proceso_id].pid = proceso_id;
     }
-    if (procesos[proceso_id].paginas[pagina].ubicacion != -1 && procesos[proceso_id].paginas[pagina].ram == 'r')
+    if (procesos[proceso_id].paginas[pagina].ubicacion != -1)
     {
-        return;
+        if (procesos[proceso_id].paginas[pagina].ram == 'r')
+            return;
+        swap[procesos[proceso_id].paginas[pagina].ubicacion_swap].pid = -1;
+        swap[procesos[proceso_id].paginas[pagina].ubicacion_swap].pagina = -1;
     }
+
     if (fisica[fifo_index].pid != -1)
     {
-        if (swap_index > SWAP)
+
+        for (i = 0; i < SWAP; i++)
+        {
+            if (swap[i].pid == -1)
+            {
+                swap_index = i;
+                break;
+            }
+        }
+        if (swap_index == -1)
         {
             printf("Memoria secundaria llena");
             exit(EXIT_SUCCESS);
@@ -73,7 +87,6 @@ void fifo(int proceso_id, int pagina)
         swap[swap_index].pagina = old_pagina;
         procesos[old_pid].paginas[old_pagina].ubicacion_swap = swap_index;
         procesos[old_pid].paginas[old_pagina].ram = 's';
-        swap_index++;
     }
     procesos[proceso_id].paginas[pagina].ram = 'r';
     fisica[fifo_index].pid = proceso_id;
@@ -84,23 +97,54 @@ void fifo(int proceso_id, int pagina)
 
 void lru(int proceso_id, int pagina)
 {
-    if (procesos[proceso_id].pid == -1)
+    if (proceso_id > MAXIMO_PROCESOS)
+    {
+        printf("El proceso no se pudo crear. Por favor ingrese un numero de proceso entre 0 y %d", MAXIMO_PROCESOS);
+        return;
+    }
+    if (procesos[proceso_id].pid == -1) // crea el proceso si no existe
     {
         procesos[proceso_id].pid = proceso_id;
     }
+
+    // si la pagina ya esta en la ram solo se aumenta su indice
     if (procesos[proceso_id].paginas[pagina].ubicacion != -1 && procesos[proceso_id].paginas[pagina].ram == 'r')
     {
+        procesos[proceso_id].paginas[pagina].lru_index = lru_index++;
         return;
     }
-    if (fisica[fifo_index].pid != -1)
+    int indice = -1;
+    int oldest_lru = lru_index + 1;
+
+    //busca el menos recientemente usado
+    for (i = 0; i < FISICA; i++)
     {
-        if (swap_index > SWAP)
+        if (fisica[i].pid == -1)
+        {
+            indice = i;
+            break;
+        }
+        int pid = fisica[i].pid;
+        int page = fisica[i].pagina;
+        int page_lru_index = procesos[pid].paginas[page].lru_index;
+
+        if (page_lru_index < oldest_lru)
+        {
+            oldest_lru = page_lru_index;
+            indice = i;
+        }
+    }
+
+    //lleva a la swap 
+    if (fisica[indice].pid != -1)
+    {
+        if (swap_index >= SWAP)
         {
             printf("Memoria secundaria llena");
             exit(EXIT_SUCCESS);
         }
-        int old_pid = fisica[fifo_index].pid;
-        int old_pagina = fisica[fifo_index].pagina;
+        int old_pid = fisica[indice].pid;
+        int old_pagina = fisica[indice].pagina;
 
         swap[swap_index].pid = old_pid;
         swap[swap_index].pagina = old_pagina;
@@ -108,25 +152,71 @@ void lru(int proceso_id, int pagina)
         procesos[old_pid].paginas[old_pagina].ram = 's';
         swap_index++;
     }
-    procesos[proceso_id].paginas[pagina].ram = 'r';
-    fisica[fifo_index].pid = proceso_id;
-    fisica[fifo_index].pagina = pagina;
 
-    procesos[proceso_id].paginas[pagina].ubicacion = fifo_index;
-    fifo_index = (fifo_index + 1) % FISICA;
+    procesos[proceso_id].paginas[pagina].ram = 'r';
+    procesos[proceso_id].paginas[pagina].lru_index = lru_index++;
+    fisica[indice].pid = proceso_id;
+    fisica[indice].pagina = pagina;
+    procesos[proceso_id].paginas[pagina].ubicacion = indice;
 }
 
-int main(int argc, char *argv[])
+void imprimirProcesos()
 {
-
-    if (argv[1][0] != '-')
+    for (i = 0; i < MAXIMO_PROCESOS; i++)
     {
-        usage(argv);
-        exit(EXIT_FAILURE);
+        if (procesos[i].pid != -1)
+        {
+            printf("Proceso %d: ", procesos[i].pid);
+            for (j = 0; j < VIRTUAL; j++)
+            {
+                if (procesos[i].paginas[j].ubicacion != -1)
+                {
+                    printf("%c%d ", procesos[i].paginas[j].ram, procesos[i].paginas[j].ubicacion + 1);
+                }
+                else
+                {
+                    printf("- ");
+                }
+            }
+            printf("\n");
+        }
     }
+}
 
-    int i, j;
+void imprimirMemoriaPrincipal()
+{
+    printf("Memoria física: ");
+    for (i = 0; i < FISICA; i++)
+    {
+        if (fisica[i].pid != -1)
+        {
+            printf("%d.%d ", fisica[i].pid, fisica[i].pagina);
+        }
+        else
+        {
+            printf("- ");
+        }
+    }
+}
+void imprimirMemoriaSecundaria()
+{
+    printf("\nMemoria secundaria: ");
+    for (i = 0; i < VIRTUAL; i++)
+    {
+        if (swap[i].pid != -1)
+        {
+            printf("%d.%d ", swap[i].pid, swap[i].pagina);
+        }
+        else
+        {
+            printf("- ");
+        }
+    }
+    printf("\n");
+}
 
+void inicializar()
+{
     for (i = 0; i < FISICA; i++)
     {
         fisica[i].pid = -1;
@@ -147,12 +237,23 @@ int main(int argc, char *argv[])
             procesos[i].paginas[j].ubicacion_swap = -1;
             procesos[i].paginas[j].ubicacion = -1;
             procesos[i].paginas[j].pid = -1;
+            procesos[i].paginas[j].lru_index = -1;
         }
+    }
+}
+
+int main(int argc, char *argv[])
+{
+
+    if (argv[1][0] != '-')
+    {
+        usage(argv);
+        exit(EXIT_FAILURE);
     }
 
     int proceso_id, pagina;
     char option = argv[1][1];
-
+    inicializar();
     switch (option)
     {
     case 'f':
@@ -171,50 +272,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Comando desconocido\n");
         exit(EXIT_FAILURE);
     }
-    for (i = 0; i < MAXIMO_PROCESOS; i++)
-    {
-        if (procesos[i].pid != -1)
-        {
-            printf("Proceso %d: ", procesos[i].pid);
-            for (j = 0; j < VIRTUAL; j++)
-            {
-                if (procesos[i].paginas[j].ubicacion != -1)
-                {
-                    printf("%c%d, ", procesos[i].paginas[j].ram, procesos[i].paginas[j].ubicacion);
-                }
-                else
-                {
-                    printf("- ");
-                }
-            }
-            printf("\n");
-        }
-    }
 
-    printf("Memoria física: ");
-    for (i = 0; i < FISICA; i++)
-    {
-        if (fisica[i].pid != -1)
-        {
-            printf("%d.%d ", fisica[i].pid, fisica[i].pagina);
-        }
-        else
-        {
-            printf("- ");
-        }
-    }
-    printf("\nMemoria secundaria: ");
-    for (i = 0; i < VIRTUAL; i++)
-    {
-        if (swap[i].pid != -1)
-        {
-            printf("%d.%d ", swap[i].pid, swap[i].pagina);
-        }
-        else
-        {
-            printf("- ");
-        }
-    }
-    printf("\n");
+    imprimirProcesos();
+    imprimirMemoriaPrincipal();
+    imprimirMemoriaSecundaria();
+
     exit(EXIT_SUCCESS);
 }

@@ -6,10 +6,10 @@ main(int argc, char *argv[])
 {
   printf(1, "%d\n", pgcnt());
 
-  b = sbrk(4096);
+  sbrk(4096);
   printf(1, "%d\n", pgcnt());
 
-  b = malloc(1);
+  malloc(1);
   printf(1, "%d\n", pgcnt());
 
   exit();
