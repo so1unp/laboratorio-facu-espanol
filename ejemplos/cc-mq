@@ -1,0 +1,2 @@
+# Script para compilar con libreria para cola de mensajes
+gcc $1.c -o $1 -lrt
